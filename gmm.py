@@ -48,10 +48,9 @@ class GMM(object):
                         m, s = mean(pts), std(pts)
                         param_pairs[c] = (m, s)
                         
-                    log_likelihood += sum(log(pdf(x, m, s)) for x in pts)
+                    log_likelihood += sum(log(pdf(x, m, s)) for x in pts)#/len(pts)
         
                 #Stop early?
-                log_likelihood /= X.shape[0]
                 if log_likelihood == prev_likelihood:
                     break
                 
@@ -64,8 +63,8 @@ class GMM(object):
         
         #calculate Bayesian Information Criterion
         self.params = best_params
-        self.likelihood = log_likelihood
-        self.bic = -2*log_likelihood + self.n_components*log(X.shape[0])
+        self.likelihood = best_likelihood
+        self.bic = -2*best_likelihood + 2*self.n_components*log(X.shape[0])
     
     def predict(self, X):
         return array([argmax([pdf(x, m, s) for m, s in self.params]) for x in X])
@@ -76,20 +75,24 @@ if __name__ == '__main__':
     from numpy import arange
     
     abs_max_m, max_s = 100, 1
-    k = randint(1, 5)
-    params = [(uniform(-abs_max_m, abs_max_m), uniform(0, max_s)) for i in xrange(k)]
-    counts = [randint(50, 1000) for i in xrange(k)]
+    true_k = randint(1, 5)
+    params = [(uniform(-abs_max_m, abs_max_m), uniform(0, max_s)) for i in xrange(true_k)]
+    counts = [randint(20, 100) for i in xrange(true_k)]
     
     X = [[normal(m, s) for i in xrange(c)] for (m,s), c in zip(params, counts)]
     X = array(reduce(lambda a,b: a+b, X))
     
     best_bic = None
     best_k = None
-    for k in xrange(1, 5):
+    bics = []
+    ks = []
+    for k in xrange(1, 5*true_k):
         clf = GMM(k)
         clf.fit(X)
         
         print k, clf.bic
+        bics.append(clf.bic)
+        ks.append(k)
         if clf.bic > best_bic:
             best_bic = clf.bic
             best_k = k
@@ -103,4 +106,9 @@ if __name__ == '__main__':
     for m, s in clf.params:
         plt.plot(X, [pdf(x, m, s) for x in X])
     
+    print 'True', true_k
+    print 'chosen', best_k
+    plt.show()
+    
+    plt.scatter(ks, bics)
     plt.show()
